@@ -1,0 +1,12 @@
+{
+  "name": "servicepilot-scripts",
+  "version": "1.0.0",
+  "description": "Utility scripts for ServicePilot",
+  "scripts": {
+    "seed": "node seedData.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^11.11.1"
+  },
+  "private": true
+}

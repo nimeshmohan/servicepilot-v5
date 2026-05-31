@@ -1,0 +1,50 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isValidImage() {
+      return request.resource.contentType.matches('image/.*') &&
+             request.resource.size < 10 * 1024 * 1024; // 10MB limit
+    }
+
+    function isValidDocument() {
+      return (request.resource.contentType.matches('image/.*') ||
+              request.resource.contentType == 'application/pdf') &&
+             request.resource.size < 20 * 1024 * 1024; // 20MB limit
+    }
+
+    // Vehicle images - accessible to authenticated users
+    match /vehicles/{vehicleId}/images/{imageId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isValidImage();
+      allow delete: if isAuthenticated();
+    }
+
+    // Parts documents - accessible to authenticated users
+    match /vehicles/{vehicleId}/parts/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isValidDocument();
+      allow delete: if isAuthenticated();
+    }
+
+    // Report files - manager only
+    match /reports/{reportId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only Cloud Functions write reports
+      allow delete: if false;
+    }
+
+    // User avatars
+    match /users/{userId}/avatar/{file} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId && isValidImage();
+      allow delete: if isAuthenticated() && request.auth.uid == userId;
+    }
+  }
+}

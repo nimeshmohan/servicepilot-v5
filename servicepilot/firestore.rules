@@ -1,0 +1,109 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isManager() {
+      return isAuthenticated() && getUserRole() == 'service_manager';
+    }
+
+    function isAdviser() {
+      return isAuthenticated() && getUserRole() == 'service_adviser';
+    }
+
+    function isJC() {
+      return isAuthenticated() && getUserRole() == 'job_controller';
+    }
+
+    function isParts() {
+      return isAuthenticated() && getUserRole() == 'parts_allocator';
+    }
+
+    function isActiveUser() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'active';
+    }
+
+    // USERS collection
+    match /users/{userId} {
+      // Users can read their own document; managers can read all
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isManager());
+      // Managers can create/update users; users can update their own basic info
+      allow create: if isManager();
+      allow update: if isManager() || (isAuthenticated() && request.auth.uid == userId &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status']));
+      allow delete: if false; // Never delete users
+    }
+
+    // VEHICLES collection
+    match /vehicles/{vehicleId} {
+      allow read: if isAuthenticated() && isActiveUser();
+      // Advisers can create vehicles
+      allow create: if isAdviser() && isActiveUser();
+      // Advisers can update their own vehicles (WDA-WFA stages)
+      // JC can update vehicles in WFA+ stages
+      // Manager can update anything
+      allow update: if isActiveUser() && (
+        isManager() ||
+        (isAdviser() && resource.data.adviserId == request.auth.uid) ||
+        isJC() ||
+        isParts()
+      );
+      allow delete: if false;
+    }
+
+    // VEHICLE STATUS HISTORY collection
+    match /vehicleStatusHistory/{historyId} {
+      allow read: if isAuthenticated() && isActiveUser();
+      allow create: if isAuthenticated() && isActiveUser();
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // PARTS TRACKING collection
+    match /partsTracking/{trackingId} {
+      allow read: if isAuthenticated() && isActiveUser();
+      allow create: if isAuthenticated() && isActiveUser();
+      allow update: if isAuthenticated() && isActiveUser() && (isManager() || isParts() || isJC());
+      allow delete: if false;
+    }
+
+    // NOTIFICATIONS collection
+    match /notifications/{notifId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == resource.data.userId ||
+        isManager()
+      );
+      allow create: if isAuthenticated() && isActiveUser();
+      allow update: if isAuthenticated() && (
+        request.auth.uid == resource.data.userId || isManager()
+      );
+      allow delete: if false;
+    }
+
+    // ACTIVITY LOGS collection (read-only for users, written by Cloud Functions)
+    match /activityLogs/{logId} {
+      allow read: if isManager();
+      allow create: if isAuthenticated() && isActiveUser();
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // REPORTS collection (manager only)
+    match /reports/{reportId} {
+      allow read: if isManager();
+      allow create: if false; // Only Cloud Functions create reports
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}
