@@ -232,3 +232,21 @@ export const getDashboardStats = async (adviserId = null) => {
     delivered: vehicles.filter(v => v.isDelivered).length,
   };
 };
+
+// ─── UPDATE VEHICLE DETAILS ───────────────────────────────────────────────────
+
+export const updateVehicle = async (vehicleId, data) => {
+  const allowed = [
+    'vehicleNumber', 'vehicleModel', 'repairType', 'repairCategory',
+    'numberOfPanels', 'jobCardNumber',
+    'customerDetails',
+    'documentaryReceivedDate', 'surveyApprovedDate', 'promisedDeliveryDate',
+    'remarks',
+  ];
+  const sanitized = {};
+  for (const key of allowed) {
+    if (data[key] !== undefined) sanitized[key] = data[key];
+  }
+  sanitized.updatedAt = serverTimestamp();
+  await updateDoc(doc(db, 'vehicles', vehicleId), sanitized);
+};
