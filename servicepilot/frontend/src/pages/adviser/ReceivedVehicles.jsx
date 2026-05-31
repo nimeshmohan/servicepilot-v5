@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { subscribeVehicles, updateVehicleStatus } from '@/utils/firestoreService';
+import { subscribeVehicles, updateVehicleStatus, updateVehicle } from '@/utils/firestoreService';
 import { formatDate, daysSince } from '@/utils/helpers';
-import { STATUS_FLOW_ADVISER } from '@/utils/constants';
+import { STATUS_FLOW_ADVISER, VEHICLE_MODELS, REPAIR_TYPES, REPAIR_CATEGORIES, INSURANCE_COMPANIES } from '@/utils/constants';
 import StatusBadge from '@/components/shared/StatusBadge';
 import Modal from '@/components/shared/Modal';
 import VehicleTimeline from '@/components/shared/VehicleTimeline';
 import toast from 'react-hot-toast';
-import { Search, ChevronRight, Eye, RefreshCw } from 'lucide-react';
+import { Search, Eye, RefreshCw, Pencil } from 'lucide-react';
 
 const ADVISER_STATUSES = ['WDA', 'WIA', 'WCA', 'WFA'];
 const NEXT_STATUS = { WDA: 'WIA', WIA: 'WCA', WCA: 'WFA', WFA: 'WFA' };
@@ -23,6 +23,11 @@ export default function ReceivedVehicles() {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updateForm, setUpdateForm] = useState({ status: '', remarks: '' });
   const [updating, setUpdating] = useState(false);
+
+  // Edit vehicle details
+  const [editing, setEditing] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const unsub = subscribeVehicles((data) => {
@@ -74,6 +79,58 @@ export default function ReceivedVehicles() {
       setUpdating(false);
     }
   };
+
+  const openEdit = (v) => {
+    setEditForm({
+      vehicleNumber:           v.vehicleNumber || '',
+      vehicleModel:            v.vehicleModel || 'Kushaq',
+      repairType:              v.repairType || 'ACC REP',
+      repairCategory:          v.repairCategory || 'Minor',
+      numberOfPanels:          v.numberOfPanels || '',
+      jobCardNumber:           v.jobCardNumber || '',
+      customerName:            v.customerDetails?.name  || v.customerName  || '',
+      customerMobile:          v.customerDetails?.mobile || v.customerMobile || '',
+      insuranceCompany:        v.customerDetails?.insuranceCompany || v.insuranceCompany || '',
+      documentaryReceivedDate: toDateInput(v.documentaryReceivedDate),
+      surveyApprovedDate:      toDateInput(v.surveyApprovedDate),
+      promisedDeliveryDate:    toDateInput(v.promisedDeliveryDate),
+      remarks:                 v.remarks || '',
+    });
+    setEditing(v);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editForm.vehicleNumber.trim()) return toast.error('Vehicle number is required');
+    if (!editForm.customerName.trim())  return toast.error('Customer name is required');
+    setSaving(true);
+    try {
+      await updateVehicle(editing.id, {
+        vehicleNumber:    editForm.vehicleNumber.toUpperCase().trim(),
+        vehicleModel:     editForm.vehicleModel,
+        repairType:       editForm.repairType,
+        repairCategory:   editForm.repairCategory,
+        numberOfPanels:   editForm.numberOfPanels,
+        jobCardNumber:    editForm.jobCardNumber.trim(),
+        customerDetails: {
+          name:             editForm.customerName.trim(),
+          mobile:           editForm.customerMobile.trim(),
+          insuranceCompany: editForm.insuranceCompany,
+        },
+        documentaryReceivedDate: editForm.documentaryReceivedDate || null,
+        surveyApprovedDate:      editForm.surveyApprovedDate      || null,
+        promisedDeliveryDate:    editForm.promisedDeliveryDate    || null,
+        remarks:                 editForm.remarks.trim(),
+      });
+      toast.success('Vehicle details updated');
+      setEditing(null);
+    } catch (err) {
+      toast.error(err.message || 'Update failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const setF = (k) => (e) => setEditForm(f => ({ ...f, [k]: e.target.value }));
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -229,6 +286,55 @@ export default function ReceivedVehicles() {
           </div>
         )}
       </Modal>
+      {/* Edit Details Modal */}
+      <Modal isOpen={!!editing} onClose={() => setEditing(null)} title={`Edit Vehicle — ${editing?.vehicleNumber}`} size="xl">
+        {editing && (
+          <div className="space-y-4 p-1">
+            <div className="bg-surface-50 dark:bg-surface-700/20 rounded-xl p-4">
+              <h3 className="text-xs font-semibold text-surface-400 uppercase tracking-wide mb-3">Vehicle Information</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div><label className="label">Vehicle Number *</label><input className="input uppercase" value={editForm.vehicleNumber} onChange={setF('vehicleNumber')} style={{ textTransform: 'uppercase' }} /></div>
+                <div><label className="label">Vehicle Model</label><select className="select" value={editForm.vehicleModel} onChange={setF('vehicleModel')}>{VEHICLE_MODELS.map(m => <option key={m}>{m}</option>)}</select></div>
+                <div><label className="label">Repair Type</label><select className="select" value={editForm.repairType} onChange={setF('repairType')}>{REPAIR_TYPES.map(t => <option key={t}>{t}</option>)}</select></div>
+                <div><label className="label">Repair Category</label><select className="select" value={editForm.repairCategory} onChange={setF('repairCategory')}>{REPAIR_CATEGORIES.map(c => <option key={c}>{c}</option>)}</select></div>
+                <div><label className="label">Number of Panels</label><input type="number" min="0" className="input" value={editForm.numberOfPanels} onChange={setF('numberOfPanels')} /></div>
+                <div><label className="label">Job Card Number</label><input className="input" value={editForm.jobCardNumber} onChange={setF('jobCardNumber')} /></div>
+              </div>
+            </div>
+            <div className="bg-surface-50 dark:bg-surface-700/20 rounded-xl p-4">
+              <h3 className="text-xs font-semibold text-surface-400 uppercase tracking-wide mb-3">Customer Information</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div><label className="label">Customer Name *</label><input className="input" value={editForm.customerName} onChange={setF('customerName')} /></div>
+                <div><label className="label">Mobile</label><input className="input" value={editForm.customerMobile} onChange={setF('customerMobile')} /></div>
+                <div className="sm:col-span-2"><label className="label">Insurance Company</label><select className="select" value={editForm.insuranceCompany} onChange={setF('insuranceCompany')}>{INSURANCE_COMPANIES.map(c => <option key={c}>{c}</option>)}</select></div>
+              </div>
+            </div>
+            <div className="bg-surface-50 dark:bg-surface-700/20 rounded-xl p-4">
+              <h3 className="text-xs font-semibold text-surface-400 uppercase tracking-wide mb-3">Important Dates</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div><label className="label">Documentary Received</label><input type="date" className="input" value={editForm.documentaryReceivedDate} onChange={setF('documentaryReceivedDate')} /></div>
+                <div><label className="label">Survey Approved</label><input type="date" className="input" value={editForm.surveyApprovedDate} onChange={setF('surveyApprovedDate')} /></div>
+                <div><label className="label">Promised Delivery</label><input type="date" className="input" value={editForm.promisedDeliveryDate} onChange={setF('promisedDeliveryDate')} /></div>
+              </div>
+            </div>
+            <div className="bg-surface-50 dark:bg-surface-700/20 rounded-xl p-4">
+              <h3 className="text-xs font-semibold text-surface-400 uppercase tracking-wide mb-3">Remarks</h3>
+              <textarea className="input min-h-[80px] resize-y" value={editForm.remarks} onChange={setF('remarks')} />
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button className="btn-secondary" onClick={() => setEditing(null)} disabled={saving}>Cancel</button>
+              <button className="btn-primary" onClick={handleSaveEdit} disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
+}
+
+function toDateInput(val) {
+  if (!val) return '';
+  if (val?.seconds) return new Date(val.seconds * 1000).toISOString().split('T')[0];
+  if (typeof val === 'string') return val.split('T')[0];
+  return '';
 }
