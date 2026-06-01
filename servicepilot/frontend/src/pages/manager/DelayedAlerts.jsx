@@ -93,7 +93,7 @@ function Section({ title, items, onView, color }) {
           const days = daysSince(v.statusEnteredAt);
           const threshold = DELAY_THRESHOLDS[v.currentStatus];
           const overBy = days - threshold;
-          const customerName = v.customerDetails?.name || v.customerName || '—';
+          const customerName = v.customerName || v.customerDetails?.name || '—';
           return (
             <div key={v.id} className={`card p-4 flex items-center gap-4 border-l-4 ${color === 'red' ? 'border-l-red-500' : 'border-l-orange-400'}`}>
               <div className="flex-1 grid grid-cols-2 sm:grid-cols-5 gap-3">
