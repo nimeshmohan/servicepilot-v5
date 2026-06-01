@@ -236,10 +236,11 @@ export const getDashboardStats = async (adviserId = null) => {
 // ─── UPDATE VEHICLE DETAILS ───────────────────────────────────────────────────
 
 export const updateVehicle = async (vehicleId, data) => {
+  // Use the same flat field names as NewVehicleIntake so reads/writes are consistent
   const allowed = [
     'vehicleNumber', 'vehicleModel', 'repairType', 'repairCategory',
     'numberOfPanels', 'jobCardNumber',
-    'customerDetails',
+    'customerName', 'customerMobile', 'insuranceCompany',
     'documentaryReceivedDate', 'surveyApprovedDate', 'promisedDeliveryDate',
     'remarks',
   ];
