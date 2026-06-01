@@ -46,9 +46,9 @@ export default function AllVehicles() {
       repairCategory:         v.repairCategory || 'Minor',
       numberOfPanels:         v.numberOfPanels || '',
       jobCardNumber:          v.jobCardNumber || '',
-      customerName:           v.customerDetails?.name  || v.customerName  || '',
-      customerMobile:         v.customerDetails?.mobile || v.customerMobile || '',
-      insuranceCompany:       v.customerDetails?.insuranceCompany || v.insuranceCompany || '',
+      customerName:           v.customerName  || v.customerDetails?.name  || '',
+      customerMobile:         v.customerMobile || v.customerDetails?.mobile || '',
+      insuranceCompany:       v.insuranceCompany || v.customerDetails?.insuranceCompany || '',
       documentaryReceivedDate: toDateInput(v.documentaryReceivedDate),
       surveyApprovedDate:      toDateInput(v.surveyApprovedDate),
       promisedDeliveryDate:    toDateInput(v.promisedDeliveryDate),
@@ -69,11 +69,9 @@ export default function AllVehicles() {
         repairCategory:   editForm.repairCategory,
         numberOfPanels:   editForm.numberOfPanels,
         jobCardNumber:    editForm.jobCardNumber.trim(),
-        customerDetails: {
-          name:             editForm.customerName.trim(),
-          mobile:           editForm.customerMobile.trim(),
-          insuranceCompany: editForm.insuranceCompany,
-        },
+        customerName:     editForm.customerName.trim(),
+        customerMobile:   editForm.customerMobile.trim(),
+        insuranceCompany: editForm.insuranceCompany,
         documentaryReceivedDate: editForm.documentaryReceivedDate || null,
         surveyApprovedDate:      editForm.surveyApprovedDate      || null,
         promisedDeliveryDate:    editForm.promisedDeliveryDate    || null,
@@ -91,11 +89,11 @@ export default function AllVehicles() {
   const handleExport = () => {
     const data = filtered.map(v => ({
       'Vehicle Number': v.vehicleNumber,
-      'Customer Name':  v.customerDetails?.name  || v.customerName,
-      'Mobile':         v.customerDetails?.mobile || v.customerMobile,
+      'Customer Name':  v.customerName  || v.customerDetails?.name,
+      'Mobile':         v.customerMobile || v.customerDetails?.mobile,
       'Model':          v.vehicleModel,
       'Repair Type':    v.repairType,
-      'Insurance':      v.customerDetails?.insuranceCompany || v.insuranceCompany,
+      'Insurance':      v.insuranceCompany || v.customerDetails?.insuranceCompany,
       'Status':         v.currentStatus,
       'Job Card':       v.jobCardNumber,
       'Promise Date':   formatDate(v.promisedDeliveryDate),
@@ -139,8 +137,8 @@ export default function AllVehicles() {
               </thead>
               <tbody>
                 {filtered.map(v => {
-                  const name = v.customerDetails?.name || v.customerName;
-                  const mobile = v.customerDetails?.mobile || v.customerMobile;
+                  const name = v.customerName || v.customerDetails?.name;
+                  const mobile = v.customerMobile || v.customerDetails?.mobile;
                   return (
                     <tr key={v.id}>
                       <td className="font-mono font-semibold text-brand-600 dark:text-brand-400">{v.vehicleNumber}</td>
@@ -149,7 +147,7 @@ export default function AllVehicles() {
                         <div className="text-xs text-surface-400">{mobile}</div>
                       </td>
                       <td>{v.vehicleModel}</td>
-                      <td className="text-sm">{v.customerDetails?.insuranceCompany || v.insuranceCompany}</td>
+                      <td className="text-sm">{v.insuranceCompany || v.customerDetails?.insuranceCompany}</td>
                       <td><StatusBadge status={v.currentStatus} /></td>
                       <td className="font-mono text-sm">{v.jobCardNumber || '—'}</td>
                       <td>{formatDate(v.promisedDeliveryDate)}</td>
@@ -180,9 +178,9 @@ export default function AllVehicles() {
             <div className="grid grid-cols-2 gap-3 text-sm">
               <Detail label="Vehicle Number" value={selected.vehicleNumber} mono />
               <Detail label="Model"          value={selected.vehicleModel} />
-              <Detail label="Customer"       value={selected.customerDetails?.name || selected.customerName} />
-              <Detail label="Mobile"         value={selected.customerDetails?.mobile || selected.customerMobile} />
-              <Detail label="Insurance"      value={selected.customerDetails?.insuranceCompany || selected.insuranceCompany} />
+              <Detail label="Customer"       value={selected.customerName || selected.customerDetails?.name} />
+              <Detail label="Mobile"         value={selected.customerMobile || selected.customerDetails?.mobile} />
+              <Detail label="Insurance"      value={selected.insuranceCompany || selected.customerDetails?.insuranceCompany} />
               <Detail label="Job Card"       value={selected.jobCardNumber} mono />
               <Detail label="Repair Type"    value={selected.repairType} />
               <Detail label="Category"       value={selected.repairCategory} />
