@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import { Search, Eye, RefreshCw, Pencil } from 'lucide-react';
 
 const ADVISER_STATUSES = ['WDA', 'WIA', 'WCA', 'WFA'];
+const FILTER_STATUSES  = ['WDA', 'WIA', 'WCA', 'WFA', 'RFD'];  // RFD shown in filter
 const NEXT_STATUS = { WDA: 'WIA', WIA: 'WCA', WCA: 'WFA', WFA: 'WFA' };
 
 export default function ReceivedVehicles() {
@@ -33,7 +34,7 @@ export default function ReceivedVehicles() {
     const unsub = subscribeVehicles((data) => {
       // Only show adviser's vehicles that are in adviser statuses
       const filtered = data.filter(v =>
-        v.adviserId === user.uid && ADVISER_STATUSES.includes(v.currentStatus)
+        v.adviserId === user.uid && FILTER_STATUSES.includes(v.currentStatus)
       );
       setVehicles(filtered);
       setLoading(false);
@@ -61,8 +62,22 @@ export default function ReceivedVehicles() {
 
   const handleUpdate = async () => {
     if (!selectedVehicle) return;
+
+    // Block WFA if no job card
+    if (updateForm.status === 'WFA') {
+      const jc = updateForm.jobCardNumber?.trim() || selectedVehicle.jobCardNumber?.trim();
+      if (!jc) return toast.error('Job Card Number is required before moving to WFA');
+    }
+
     setUpdating(true);
     try {
+      // Save job card number to vehicle document if it was entered/changed
+      const enteredJC = updateForm.jobCardNumber?.trim();
+      const additionalData = {};
+      if (enteredJC && enteredJC !== selectedVehicle.jobCardNumber) {
+        additionalData.jobCardNumber = enteredJC;
+      }
+
       await updateVehicleStatus(selectedVehicle.id, {
         status: updateForm.status,
         subStatus: null,
@@ -70,6 +85,7 @@ export default function ReceivedVehicles() {
         updatedBy: userProfile?.name || user.email,
         updatedByRole: 'service_adviser',
         previousStatus: selectedVehicle.currentStatus,
+        additionalData,
       });
       toast.success(`Status updated to ${updateForm.status}`);
       setShowUpdateModal(false);
@@ -151,7 +167,7 @@ export default function ReceivedVehicles() {
           />
         </div>
         <div className="flex gap-2">
-          {['all', ...ADVISER_STATUSES].map(s => (
+          {['all', ...FILTER_STATUSES].map(s => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
